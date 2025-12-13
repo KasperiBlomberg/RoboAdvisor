@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy
+plotly
+PyPortfolioOpt==1.5.6
+cvxpy
+scikit-learn
+psycopg2-binary
+sqlalchemy
