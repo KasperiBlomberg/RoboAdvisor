@@ -14,7 +14,7 @@ This application calculates optimal asset weights based on risk tolerance and co
 
 * **Optimization Solver:** Convex optimization using `PyPortfolioOpt`.
 * **Custom Constraints:** Dynamic weight caps to force diversification (e.g., max 25% per asset).
-* **Data Pipeline:** ETL script fetches data from Yahoo Finance and stores it in PostgreSQL (Neon).
+* **Data Pipeline:** ETL script fetches data daily from Yahoo Finance and stores it in PostgreSQL (Neon).
 * **Visualization:** Interactive portfolio piechart and correlation matrix using Plotly.
 
 ## Setup
