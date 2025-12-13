@@ -1,9 +1,11 @@
+import os
 import yfinance as yf
-import streamlit as st
 from sqlalchemy import create_engine
+from dotenv import load_dotenv
 
 # Configuration
-DATABASE_URL = st.secrets["DATABASE_URL"]
+load_dotenv()
+DATABASE_URL = os.environ.get("DATABASE_URL")
 TICKERS = ["SPY", "QQQ", "IWM", "VGK", "EEM", "IEI", "HYG", "GLD", "VNQ"]
 START_DATE = "2015-01-01"
 
