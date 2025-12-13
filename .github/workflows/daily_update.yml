@@ -1,4 +1,4 @@
-name: Meridian Wealth Data Pipeline
+name: Data Pipeline
 
 on:
   schedule:
