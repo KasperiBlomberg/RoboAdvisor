@@ -1,0 +1,32 @@
+name: Meridian Wealth Data Pipeline
+
+on:
+  schedule:
+    # Runs daily at 05:00 UTC
+    - cron: '0 5 * * *'
+
+  workflow_dispatch:
+
+jobs:
+  update-market-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pandas sqlalchemy psycopg2-binary yfinance python-dotenv
+
+      - name: Execute ETL Script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python etl.py
