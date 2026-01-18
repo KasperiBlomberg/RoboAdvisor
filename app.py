@@ -12,24 +12,26 @@ col_header, col_logo = st.columns([9, 1])
 with col_header:
     st.markdown("**Global Multi-Asset Portfolio Optimizer**")
 
+
 # Database connection
 def get_db_engine():
     db_url = st.secrets["DATABASE_URL"]
     return create_engine(db_url)
 
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_market_data():
     engine = get_db_engine()
-    
+
     query = "SELECT * FROM stock_prices"
-    
+
     with engine.connect() as conn:
         df_long = pd.read_sql(query, conn)
-    
+
     # Pivot to wide for math
     df_wide = df_long.pivot(index="Date", columns="Ticker", values="Price")
     df_wide.index = pd.to_datetime(df_wide.index)
-    
+
     return df_wide
 
 
@@ -82,6 +84,18 @@ with st.sidebar:
         help="Diversification Rule: No single asset can exceed this weight.",
     )
 
+    with st.expander("ℹ️ Note on Currency Assumptions"):
+        st.caption(
+            """
+        **FX Neutrality:** This model assumes the EUR/USD exchange rate remains 
+        stable over the long term (Uncovered Interest Parity). 
+        
+        We use J.P. Morgan's native USD return forecasts 
+        rather than their EUR-adjusted forecast , which implies a 
+        predictive bearish view on the Dollar.
+        """
+        )
+
 
 # Dashboard
 tab1, tab2 = st.tabs(["Strategy Dashboard", "Market Data Inspector"])
@@ -91,22 +105,24 @@ with tab1:
     st.subheader("Strategic Asset Allocation")
 
     # Define expected returns
+
+    RISK_FREE_RATE = 0.02  # Approx 3-Month Euribor (Jan 2026)
+
     if model_choice == "Institutional Consensus (J.P. Morgan 2026)":
         # 2026 Arithmetic Returns (from LTCMA)
         mu_raw = {
-            "SPY": 0.0794,
-            "QQQ": 0.0834,
-            "IWM": 0.0889,
-            "VGK": 0.0994,
-            "EEM": 0.0974,
-            "IEI": 0.0406,
-            "HYG": 0.0646,
-            "GLD": 0.0678,
-            "VNQ": 0.0879,
+            "SXR8.DE": 0.0794,
+            "ZPRR.DE": 0.0889,
+            "EXSA.DE": 0.0743,
+            "IS3N.DE": 0.0974,
+            "SXRP.DE": 0.0354,
+            "XHYG.DE": 0.0572,
+            "IWDP.AS": 0.0895,
+            "4GLD.DE": 0.0678,
         }
         mu = pd.Series(mu_raw)
     else:
-        mu = expected_returns.capm_return(df)
+        mu = expected_returns.capm_return(df, RISK_FREE_RATE)
 
     # Optimization engine
     mu = mu.reindex(df.columns).fillna(0.0)
@@ -120,7 +136,7 @@ with tab1:
 
     # Calculate Optimal Weights
     try:
-        ef = EfficientFrontier(mu, S, weight_bounds=(0.01, max_alloc))
+        ef = EfficientFrontier(mu, S, weight_bounds=(0.0, max_alloc))
         weights = ef.efficient_risk(target_vol)
 
     except:
@@ -129,33 +145,32 @@ with tab1:
         )
         # Re-initialize so it doesn't crash
         ef = EfficientFrontier(mu, S, weight_bounds=(0.01, max_alloc))
-        weights = ef.max_sharpe()
+        weights = ef.max_sharpe(risk_free_rate=RISK_FREE_RATE)
 
     cleaned_weights = ef.clean_weights()
 
     # Visualization
     ticker_map = {
-        "SPY": "US Large Cap (S&P 500)",
-        "QQQ": "US Tech (Nasdaq)",
-        "IWM": "US Small Cap (Russell 2000)",
-        "VGK": "Developed Europe",
-        "EEM": "Emerging Markets",
-        "IEI": "Govt Bonds (Safe)",
-        "HYG": "Corp Bonds (High Yield)",
-        "GLD": "Gold",
-        "VNQ": "Real Estate",
+        "SXR8.DE": "US Large Cap (iShares S&P 500)",
+        "ZPRR.DE": "US Small Cap (Russell 2000)",
+        "EXSA.DE": "Europe (iShares Stoxx 600)",
+        "IS3N.DE": "Emerging Markets (iShares MSCI EM IMI)",
+        "SXRP.DE": "Euro Govt Bonds (iShares Euro Govt 3-7yr)",
+        "XHYG.DE": "Euro High Yield (iShares Euro High Yield)",
+        "IWDP.AS": "Global REIT (iShares Developed Markets Property Yield)",
+        "4GLD.DE": "Gold (Xetra-Gold)",
     }
 
     color_map = {
-        "US Large Cap (S&P 500)": "#1f77b4",
-        "US Tech (Nasdaq)": "#00bfff",
-        "US Small Cap (Russell 2000)": "#8c564b",
-        "Developed Europe": "#2ca02c",
-        "Emerging Markets": "#ff7f0e",
-        "Govt Bonds (Safe)": "#7f7f7f",
-        "Corp Bonds (High Yield)": "#e377c2",
-        "Gold": "#bcbd22",
-        "Real Estate": "#9467bd",
+        "US Large Cap (S&P 500)": "#1f77b4",  # Blue
+        "US Small Cap (Russell 2000)": "#8c564b",  # Brown
+        "Europe (Stoxx 600)": "#2ca02c",  # Green
+        "Emerging Markets": "#ff7f0e",  # Orange
+        "Finland (OMXH25)": "#17becf",  # Cyan (Nordic color)
+        "Euro Govt Bonds (Safe)": "#7f7f7f",  # Grey (Stable)
+        "Euro High Yield Bonds": "#e377c2",  # Pink (Riskier Bond)
+        "Global Real Estate": "#9467bd",  # Purple
+        "Gold": "#bcbd22",  # Gold/Olive
     }
 
     # Display
@@ -184,7 +199,7 @@ with tab1:
     with col_metrics:
         # Portfolio Stats
         st.markdown("#### Projected Performance")
-        perf = ef.portfolio_performance(verbose=False, risk_free_rate=0.04)
+        perf = ef.portfolio_performance(verbose=False, risk_free_rate=RISK_FREE_RATE)
 
         st.metric("Expected Annual Return", f"{perf[0]*100:.1f}%")
         st.metric("Annual Volatility (Risk)", f"{perf[1]*100:.1f}%")

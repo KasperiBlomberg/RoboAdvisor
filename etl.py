@@ -6,7 +6,16 @@ from dotenv import load_dotenv
 # Configuration
 load_dotenv()
 DATABASE_URL = os.environ.get("DATABASE_URL")
-TICKERS = ["SPY", "QQQ", "IWM", "VGK", "EEM", "IEI", "HYG", "GLD", "VNQ", "EURUSD=X"]
+TICKERS = [
+    "SXR8.DE",
+    "ZPRR.DE",
+    "EXSA.DE",
+    "IS3N.DE",
+    "SXRP.DE",
+    "XHYG.DE",
+    "IWDP.AS",
+    "4GLD.DE",
+]
 START_DATE = "2015-01-01"
 
 
@@ -25,16 +34,8 @@ def transform_data(df):
     df = df.ffill().dropna()
     print(f"-> Data start date {df.index[0].date()}.")
 
-    exchange_rate = df["EURUSD=X"]
-    asset_prices = df.drop(columns=["EURUSD=X"])
-    usd_tickers = ["SPY", "QQQ", "IWM", "VGK", "EEM", "IEI", "HYG", "GLD", "VNQ"]
-
-    # Convert USD Assets to EUR
-    for ticker in usd_tickers:
-        asset_prices[ticker] = asset_prices[ticker] / exchange_rate
-
     # Reshape for Database
-    df_long = asset_prices.reset_index().melt(
+    df_long = df.reset_index().melt(
         id_vars=["Date"], var_name="Ticker", value_name="Price"
     )
     return df_long
