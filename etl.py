@@ -4,18 +4,9 @@ from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
 # Configuration
+from src.config import TICKERS
 load_dotenv()
 DATABASE_URL = os.environ.get("DATABASE_URL")
-TICKERS = [
-    "SXR8.DE",
-    "ZPRR.DE",
-    "EXSA.DE",
-    "IS3N.DE",
-    "SXRP.DE",
-    "XHYG.DE",
-    "IWDP.AS",
-    "4GLD.DE",
-]
 START_DATE = "2015-01-01"
 
 
