@@ -19,6 +19,11 @@ The app calculates optimal asset weights based on risk tolerance and constraints
 * **Data Pipeline:** ETL script fetches data daily from Yahoo Finance and stores it in PostgreSQL (Neon).
 * **Visualization:** Interactive portfolio piechart and correlation matrix using Plotly.
 
+## Future Improvements
+
+* **Backtesting Engine:** Implement a historical backtest to validate how the investing strategy would have performed over the past 3-5 years.
+* **Rebalancing Logic:** Add simulation for quarterly or annual portfolio rebalancing.
+
 ## Development & AI Usage
 To maximize development speed and to experiment, this project utilizes an AI-assisted workflow:
 * **Backend & Math:** The core optimization logic, database connections, and data cleaning were architected and implemented manually to ensure mathematical accuracy.
