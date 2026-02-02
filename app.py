@@ -21,32 +21,6 @@ except Exception as e:
     st.error("Database Connection Failed")
     st.stop()
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("Client Profile")
-
-    risk_level = st.slider(
-        "Risk Tolerance (1-10)",
-        1,
-        10,
-        6,
-        help="1 = Conservative (Bonds), 10 = Aggressive (Stocks)",
-    )
-
-    st.markdown("---")
-    st.header("Strategy Settings")
-
-    model_choice = st.selectbox(
-        "Expected Return Model",
-        ["Institutional Consensus (J.P. Morgan 2026)", "Historical Data (CAPM)"],
-    )
-
-    max_alloc = st.slider("Max Asset Allocation", 0.15, 1.00, 0.25, 0.05)
-
-    with st.expander("ℹ️ Currency Assumptions"):
-        st.caption("Model assumes FX Neutrality (Uncovered Interest Parity).")
-
-# ... (Imports and setup remain the same) ...
 
 # --- MAIN DASHBOARD ---
 tab1, tab2 = st.tabs(["Strategy Dashboard", "Market Data Inspector"])
@@ -54,47 +28,70 @@ tab1, tab2 = st.tabs(["Strategy Dashboard", "Market Data Inspector"])
 with tab1:
     st.subheader("Strategic Asset Allocation")
 
-    # RUN OPTIMIZATION
+    # 1. Create a placeholder for the KPIs at the very top
+    kpi_section = st.container()
+
+    # 2. Define the Middle Layout: Chart (Left) + Inputs (Right)
+    # Using [3, 1] ratio to give the chart plenty of room
+    CONTAINER_HEIGHT = 550
+    col_chart, col_controls = st.columns([3, 1], gap="medium")
+
+    # --- RIGHT COLUMN: INPUTS ---
+    with col_controls:
+        with st.container(height=CONTAINER_HEIGHT, border=True):
+            st.markdown("#### Client Profile")
+            
+            risk_level = st.slider(
+                "Risk Tolerance",
+                1, 10, 6,
+                help="1 = Conservative, 10 = Aggressive"
+            )
+
+            st.markdown("---")
+            st.markdown("#### Strategy")
+
+            # Shortened labels slightly to fit better in the column
+            model_choice = st.selectbox(
+                "Return Model",
+                ["Institutional Consensus", "Historical Data (CAPM)"]
+            )
+
+            max_alloc = st.slider("Max Allocation", 0.15, 1.00, 0.25, 0.05)
+
+            with st.expander("ℹ️ Currency Assumptions"):
+                st.caption("Model assumes FX Neutrality (Uncovered Interest Parity).")
+
+    # --- CALCULATIONS ---
+    # Now that inputs are defined, we run the math
     mu, S = calculate_metrics(df, model_choice)
     weights, perf = run_optimization(mu, S, risk_level, max_alloc)
 
-    # --- TOP ROW: KPI CARDS ---
-    # We use a container to group the metrics visually
-    with st.container(border=True):
-        st.markdown("#### Projected Performance")
-        kpi1, kpi2, kpi3 = st.columns(3)
-
-        with kpi1:
-            st.metric(
-                "Expected Return",
-                f"{perf[0]*100:.1f}%",
-                help="Annualized expected return based on selected model"
-            )
-        with kpi2:
-            st.metric(
-                "Annual Volatility",
-                f"{perf[1]*100:.1f}%",
-                help="Standard deviation of returns (Risk)"
-            )
-        with kpi3:
-            # Color code the Sharpe ratio: Green if > 1, else normal
-            sharpe_val = perf[2]
-            st.metric(
-                "Sharpe Ratio",
-                f"{sharpe_val:.2f}",
-                delta="Good" if sharpe_val > 1.0 else None,
-                delta_color="normal"
-            )
-
-    # --- MIDDLE ROW: CHARTS ---
-    col_alloc, col_corr = st.columns([1, 1], gap="medium")
-
-    # LEFT COLUMN: ALLOCATION
-    with col_alloc:
+    # --- FILL TOP ROW: KPI CARDS ---
+    # We go back and fill the placeholder we created at step 1
+    with kpi_section:
         with st.container(border=True):
+            kpi1, kpi2, kpi3 = st.columns(3)
+
+            with kpi1:
+                st.metric("Expected Return", f"{perf[0]*100:.1f}%")
+            with kpi2:
+                st.metric("Annual Volatility", f"{perf[1]*100:.1f}%")
+            with kpi3:
+                sharpe_val = perf[2]
+                st.metric(
+                    "Sharpe Ratio",
+                    f"{sharpe_val:.2f}",
+                    delta="Good" if sharpe_val > 1.0 else None,
+                    delta_color="normal"
+                )
+        # Add a little space between KPIs and the main area
+        st.write("") 
+
+    # --- LEFT COLUMN: PIE CHART ---
+    with col_chart:
+        with st.container(height=CONTAINER_HEIGHT, border=True):
             st.markdown("#### Portfolio Weights")
             
-            # Prepare Data
             weights_df = pd.Series(weights).reset_index()
             weights_df.columns = ["Ticker", "Weight"]
             weights_df["Name"] = weights_df["Ticker"].map(TICKER_MAP)
@@ -109,9 +106,8 @@ with tab1:
                 hole=0.4,
             )
             
-            # FIX: Move legend to bottom to give chart more width
             fig_pie.update_layout(
-                margin=dict(t=20, b=20, l=20, r=20),
+                margin=dict(t=30, b=30, l=30, r=30),
                 legend=dict(
                     orientation="h",
                     yanchor="top",
@@ -119,37 +115,31 @@ with tab1:
                     xanchor="center",
                     x=0.5
                 ),
-                height=400
+                height=450  # Good height for this layout
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
-    # RIGHT COLUMN: CORRELATION
-    with col_corr:
-        with st.container(border=True):
-            st.markdown("#### Asset Correlation")
-            
-            corr_matrix = df.pct_change().corr()
-            corr_viz = corr_matrix.rename(index=TICKER_MAP, columns=TICKER_MAP)
+    # --- BOTTOM ROW: CORRELATION (Full Width) ---
+    st.markdown("### Asset Correlation Analysis")
+    with st.container(border=True):
+        corr_matrix = df.pct_change().corr()
+        corr_viz = corr_matrix.rename(index=TICKER_MAP, columns=TICKER_MAP)
 
-            fig_corr = px.imshow(
-                corr_viz,
-                text_auto=".2f",
-                aspect="auto", # Changed from 'equal' to fill space better
-                color_continuous_scale="RdBu_r",
-                origin="lower",
-            )
+        fig_corr = px.imshow(
+            corr_viz,
+            text_auto=".2f",
+            aspect="auto",
+            color_continuous_scale="RdBu_r",
+            origin="lower",
+        )
 
-            fig_corr.update_layout(
-                height=400, # Match height of Pie Chart
-                margin=dict(t=30, b=0, l=0, r=0),
-                xaxis=dict(showgrid=False),
-                yaxis=dict(showgrid=False),
-                coloraxis_showscale=False # Hides color bar to save space (optional)
-            )
-            st.plotly_chart(fig_corr, use_container_width=True)
-            
-    # Optional: Contextual help below charts
-    st.caption("ℹ️ **Note:** Correlation matrix helps identify diversification benefits. Lower values (blue) indicate assets that tend to move independently.")
+        fig_corr.update_layout(
+            height=500,
+            margin=dict(t=40, b=80, l=40, r=40),
+            xaxis=dict(tickangle=-45),
+            coloraxis_showscale=True
+        )
+        st.plotly_chart(fig_corr, use_container_width=True)
 
 with tab2:
     st.header("Market Data Inspector")

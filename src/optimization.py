@@ -7,10 +7,9 @@ def calculate_metrics(df, model_choice):
     
     S = risk_models.CovarianceShrinkage(df).ledoit_wolf()
 
-    if model_choice == "Institutional Consensus (J.P. Morgan 2026)":
+    if model_choice == "Institutional Consensus":
         mu = pd.Series(JPM_2026_RETURN_FORECASTS)
-    else:
-        # CAPM (Historical)
+    elif model_choice == "Historical Data (CAPM)":
         mu = expected_returns.capm_return(df, risk_free_rate=RISK_FREE_RATE)
     
     # Ensure dimensions match
